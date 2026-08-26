@@ -1,8 +1,8 @@
 # Limit Order Book: Next Steps (as of 2026-07-01)
 
-Status update: part 1 (the MVP) and steps 4 and 5 of part 2 below are complete. See [README.md](README.md) for the current state of the project; the rest of this file is the original plan, kept as a record of the reasoning and the remaining steps.
+Status update (2026-08-13): **the project is done.** Part 1 (the MVP) and all of part 2 (memory pool, intrusive list, benchmarking, lock free SPSC queue) are complete. See [README.md](README.md) for the current state, including the benchmark results. The rest of this file is the original plan, kept as a record of the reasoning behind the steps -- it no longer describes open work.
 
-Scope change (2026-08-13): the ITCH parser step has been dropped. It doesn't add enough to justify the time, and it would be code the project's owner can't fully explain themselves. The remaining receive-side work is just benchmarking and the lock free SPSC queue; the old step numbering below is kept as a historical record and no longer matches the current plan.
+Scope change (2026-08-13): the ITCH parser step (originally step 6) was dropped partway through. It didn't add enough to justify the time, and it would have been code the project's owner couldn't fully explain themselves. Everything else in part 2 below was completed as planned; only step numbering that referenced ITCH is now stale.
 
 ## Starting point
 
@@ -68,30 +68,36 @@ Instead of `std::list` (allocates per node individually), a pre allocated pool w
 ### Step 5: Intrusive linked list (roughly in parallel with step 4)
 `next_idx`/`prev_idx` directly inside the Order struct, interlocked with the pool. Cache locality: the orders sit contiguously in memory.
 
-### Step 6: ITCH parser (about 25h)
+### Step 6: ITCH parser -- dropped
 The wow feature. Real NASDAQ ITCH binary data instead of the simulator. This turns a university project into a "runs on real exchange data" project. Big endian byte swapping, message types A/D/E/X/U.
 
-### Step 7: Benchmarking (about 10h)
+Dropped on 2026-08-13 as a scope cut (see the note at the top of this file).
+
+### Step 7: Benchmarking -- done
 Naive `std::map`/`std::list` version vs. pool version. Latency p50/p99 with `std::chrono`. This becomes the README table and the speedup factor.
 
-### Step 8: Lock free SPSC queue (about 15h)
-Parser thread plus matching thread, with the lock free queue in between, `alignas(64)` against false sharing. The crowning piece of the receive side, production grade.
+Implemented in `benchmark/`; results and methodology are in [README.md](README.md#benchmark).
+
+### Step 8: Lock free SPSC queue -- done
+Producer thread (feed simulator) plus matching thread, with the lock free queue in between, `alignas(64)` against false sharing. The crowning piece of the receive side, production grade.
+
+Implemented in [spsc_queue.h](spsc_queue.h), wired up in `main.cpp`, tested in `tests/test_spsc_queue.cpp` (including a two-thread stress test). Originally scoped for an ITCH-parser thread feeding the matching thread; since ITCH was dropped, the producer is the feed simulator instead.
 
 ---
 
 ## Order at a glance
 
 ```
-1. main.cpp + Makefile          now, make it runnable
-2. trade output/log             core functional gap
-3. cleanup + README             MVP done
+1. main.cpp + Makefile          done
+2. trade output/log             done
+3. cleanup + README             done
                                  (MVP complete)
-4. memory pool                  first performance jump
-5. intrusive list                interlocked with the pool
-6. ITCH parser                  wow feature, real data
-7. benchmarking                 README table
-8. lock free SPSC queue         crowning piece
-                                 (receive side complete)
+4. memory pool                  done
+5. intrusive list               done
+6. ITCH parser                  dropped (scope cut, 2026-08-13)
+7. benchmarking                 done -- README table
+8. lock free SPSC queue         done -- crowning piece
+                                 (receive side complete, project done)
 ```
 
 ---
